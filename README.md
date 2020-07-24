@@ -1,7 +1,7 @@
 # Reportportal agent for Cucumber v.5
 Cucumber JVM version [5.0.0;6.0.0) adapter
 
-[ ![Download](https://api.bintray.com/packages/epam/reportportal/agent-java-cucumber4/images/download.svg) ](https://bintray.com/epam/reportportal/agent-java-cucumber5/_latestVersion)
+[ ![Download](https://api.bintray.com/packages/epam/reportportal/agent-java-cucumber5/images/download.svg) ](https://bintray.com/epam/reportportal/agent-java-cucumber5/_latestVersion)
 
 
 [![Join Slack chat!](https://reportportal-slack-auto.herokuapp.com/badge.svg)](https://reportportal-slack-auto.herokuapp.com)
