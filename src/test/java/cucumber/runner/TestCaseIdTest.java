@@ -11,25 +11,18 @@ import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRS;
-import io.cucumber.core.gherkin.Location;
-import io.cucumber.core.gherkin.Step;
-import io.cucumber.cucumberexpressions.Group;
-import io.cucumber.plugin.event.PickleStepTestStep;
-import io.cucumber.plugin.event.StepDefinition;
-import io.cucumber.plugin.event.TestStep;
+import io.cucumber.core.internal.gherkin.ast.Location;
+
+import io.cucumber.plugin.event.*;
 import io.reactivex.Maybe;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import rp.com.google.common.collect.Lists;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -39,6 +32,8 @@ import static org.mockito.Mockito.*;
  * @author <a href="mailto:ivan_budayeu@epam.com">Ivan Budayeu</a>
  */
 public class TestCaseIdTest {
+
+	private static final URI FEATURE_URI = URI.create(TestCaseIdTest.class.getClassLoader().getResource("test/belly.feature").toString());
 
 	private StepReporterExtension stepReporter;
 
@@ -63,7 +58,7 @@ public class TestCaseIdTest {
 		static final ThreadLocal<ListenerParameters> LISTENER_PARAMETERS = new ThreadLocal<>();
 
 		public StepReporterExtension() {
-			STEP.set(getStep());
+			STEP.set(getStep(1, "Given", "some test step"));
 
 			RunningContextExtension.FeatureContextExtension featureContext = mock(RunningContextExtension.FeatureContextExtension.class);
 			FEATURE_CONTEXT.set(featureContext);
@@ -126,85 +121,6 @@ public class TestCaseIdTest {
 		protected RunningContextExtension.ScenarioContextExtension getCurrentScenarioContext() {
 			return SCENARIO_CONTEXT.get();
 		}
-
-		private static Step getStep() {
-			Location location = new Location(){
-
-				@Override
-				public int getLine() {
-					return 1;
-				}
-
-				@Override
-				public int getColumn() {
-					return 1;
-				}
-			};
-			return new Step(location, "Given", "Parametrized", null);
-		}
-	}
-
-	public static class StepDefinitionExtension implements StepDefinition {
-
-		private final Method method;
-
-		public StepDefinitionExtension(final Method method) {
-			this.method = method;
-		}
-
-		@Override
-		public List<Argument> matchedArguments(PickleStep step) {
-			return parameterValues.stream().map(it -> {
-				try {
-					Constructor<ExpressionArgument> constructor = (Constructor<ExpressionArgument>) ExpressionArgument.class.getDeclaredConstructors()[0];
-					constructor.setAccessible(true);
-					return constructor.newInstance(new io.cucumber.cucumberexpressions.Argument<String>(null, null) {
-						@Override
-						public String getValue() {
-							return it;
-						}
-
-						@Override
-						public Group getGroup() {
-							return new Group(it, 1, 5, Collections.emptyList());
-						}
-					});
-				} catch (IllegalAccessException | InstantiationException | InvocationTargetException e) {
-					throw new RuntimeException(e);
-				}
-
-			}).collect(Collectors.toList());
-		}
-
-		@Override
-		public String getLocation(boolean detail) {
-			return "com.test.Parametrized(int,String)";
-		}
-
-		@Override
-		public Integer getParameterCount() {
-			return null;
-		}
-
-		@Override
-		public void execute(Object[] args) throws Throwable {
-
-		}
-
-		@Override
-		public boolean isDefinedAt(StackTraceElement stackTraceElement) {
-			return false;
-		}
-
-		@Override
-		public String getPattern() {
-			return null;
-		}
-
-		@Override
-		public boolean isScenarioScoped() {
-			return false;
-		}
 	}
 
 	@Before
@@ -217,12 +133,12 @@ public class TestCaseIdTest {
 
 		stepReporter.beforeLaunch();
 
-		PickleStepTestStep testStep = getCustomTestStep(new StepDefinitionExtension(this.getClass().getDeclaredMethod("testCaseIdMethod")));
+		PickleStepTestStep testStep = getCustomTestStep(new StepDefinition(getClass().getDeclaredMethod("testCaseIdMethod").getName(), ""));
 
 		StepReporterExtension.TEST_STEP.set(testStep);
 
 		when(StepReporterExtension.SCENARIO_CONTEXT.get()
-				.getStep(StepReporterExtension.TEST_STEP.get())).thenReturn(new Step(new Location(1, 1),
+				.getStep(StepReporterExtension.TEST_STEP.get())).thenReturn(new io.cucumber.core.internal.gherkin.ast.Step(new Location(1, 1),
 				"keyword",
 				String.format("tesst with parameters <%s>", String.join("> <", parameterNames)),
 				null
@@ -249,13 +165,15 @@ public class TestCaseIdTest {
 
 		stepReporter.beforeLaunch();
 
-		PickleStepTestStep testStep = getCustomTestStep(new StepDefinitionExtension(this.getClass()
-				.getDeclaredMethod("testCaseIdParametrizedMethod", Integer.class, String.class)));
+		PickleStepTestStep testStep = getCustomTestStep(new StepDefinition(getClass().getDeclaredMethod("testCaseIdParametrizedMethod",
+				Integer.class,
+				String.class
+		).getName(), ""));
 
 		StepReporterExtension.TEST_STEP.set(testStep);
 
 		when(StepReporterExtension.SCENARIO_CONTEXT.get()
-				.getStep(StepReporterExtension.TEST_STEP.get())).thenReturn(new Step(new Location(1, 1),
+				.getStep(StepReporterExtension.TEST_STEP.get())).thenReturn(new io.cucumber.core.internal.gherkin.ast.Step(new Location(1, 1),
 				"keyword",
 				String.format("tesst with parameters <%s>", String.join("> <", parameterNames)),
 				null
@@ -282,13 +200,16 @@ public class TestCaseIdTest {
 
 		stepReporter.beforeLaunch();
 
-		PickleStepTestStep testStep = getCustomTestStep(new StepDefinitionExtension(this.getClass()
-				.getDeclaredMethod("testCaseIdParametrizedMethodWithoutKey", Integer.class, String.class)));
+		PickleStepTestStep testStep = getCustomTestStep(new StepDefinition(getClass().getDeclaredMethod(
+				"testCaseIdParametrizedMethodWithoutKey",
+				Integer.class,
+				String.class
+		).getName(), ""));
 
 		StepReporterExtension.TEST_STEP.set(testStep);
 
 		when(StepReporterExtension.SCENARIO_CONTEXT.get()
-				.getStep(StepReporterExtension.TEST_STEP.get())).thenReturn(new Step(new Location(1, 1),
+				.getStep(StepReporterExtension.TEST_STEP.get())).thenReturn(new io.cucumber.core.internal.gherkin.ast.Step(new Location(1, 1),
 				"keyword",
 				String.format("tesst with parameters <%s>", String.join("> <", parameterNames)),
 				null
@@ -311,13 +232,24 @@ public class TestCaseIdTest {
 	}
 
 	private PickleStepTestStep getCustomTestStep(StepDefinition stepDefinition) {
-		PickleStep pickleStep = new PickleStep("text", Collections.emptyList(), Collections.emptyList());
-		return new PickleStepTestStep("some uri",
-				pickleStep,
-				new PickleStepDefinitionMatch(stepDefinition.matchedArguments(pickleStep), stepDefinition, null, null)
-		);
+		Step pickleStep = getStep(1, "Given", "text");
+		PickleStepTestStep result = mock(PickleStepTestStep.class);
+		when(result.getUri()).thenReturn(FEATURE_URI);
+		when(result.getDefinitionArgument()).thenReturn(Collections.emptyList());
+		when(result.getPattern()).thenReturn(stepDefinition.getPattern());
+		when(result.getCodeLocation()).thenReturn(stepDefinition.getLocation());
+		when(result.getStep()).thenReturn(pickleStep);
+		return result;
 	}
 
+	private static Step getStep(final int line, final String keyword, final String text) {
+		Step result = mock(Step.class);
+		when(result.getLine()).thenReturn(line);
+		when(result.getArgument()).thenReturn(mock(StepArgument.class));
+		when(result.getKeyWord()).thenReturn(keyword);
+		when(result.getText()).thenReturn(text);
+		return result;
+	}
 }
 
 
