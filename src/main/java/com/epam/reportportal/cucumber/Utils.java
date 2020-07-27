@@ -27,10 +27,8 @@ import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.ParameterResource;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.attribute.ItemAttributesRQ;
-
-import io.cucumber.plugin.event.PickleStepTestStep;
-import io.cucumber.plugin.event.TestStep;
-import io.cucumber.plugin.event.Status;
+import io.cucumber.core.internal.gherkin.ast.Tag;
+import io.cucumber.plugin.event.*;
 import io.reactivex.Maybe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,12 +39,8 @@ import javax.annotation.Nullable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -139,8 +133,16 @@ public class Utils {
 	 * @param tags - Cucumber tags
 	 * @return set of tags
 	 */
-	public static Set<ItemAttributesRQ> extractAttributes(List<String> tags) {
-		return tags.stream().map(s->new ItemAttributesRQ(null, s)).collect(Collectors.toSet());
+	public static Set<ItemAttributesRQ> extractAttributes(List<?> tags) {
+		return tags.stream().map(s -> {
+			String tagValue;
+			if (s instanceof Tag) {
+				tagValue = ((Tag) s).getName();
+			} else {
+				tagValue = s.toString();
+			}
+			return new ItemAttributesRQ(null, tagValue);
+		}).collect(Collectors.toSet());
 	}
 
 	/**
@@ -161,23 +163,25 @@ public class Utils {
 		return mapped;
 	}
 
-    /**
-     * Map Cucumber statuses to RP item statuses
-     *
-     * @param status - Cucumber status
-     * @return RP test item status and null if status is null
-     */
-    static String mapItemStatus(Status status) {
-        if (status == null) {
-            return null;
-        } else {
-            if (STATUS_MAPPING.get(status) == null) {
-                LOGGER.error(String.format("Unable to find direct mapping between Cucumber and ReportPortal for TestItem with status: '%s'.", status));
-                return ItemStatus.SKIPPED.name();
-            }
-            return STATUS_MAPPING.get(status).name();
-        }
-    }
+	/**
+	 * Map Cucumber statuses to RP item statuses
+	 *
+	 * @param status - Cucumber status
+	 * @return RP test item status and null if status is null
+	 */
+	static String mapItemStatus(Status status) {
+		if (status == null) {
+			return null;
+		} else {
+			if (STATUS_MAPPING.get(status) == null) {
+				LOGGER.error(String.format("Unable to find direct mapping between Cucumber and ReportPortal for TestItem with status: '%s'.",
+						status
+				));
+				return ItemStatus.SKIPPED.name();
+			}
+			return STATUS_MAPPING.get(status).name();
+		}
+	}
 
 	/**
 	 * Generate name representation
@@ -205,24 +209,25 @@ public class Utils {
 	 * none)
 	 */
 	static String buildMultilineArgument(TestStep step) {
-		List<PickleRow> table = null;
+		List<List<String>> table = null;
 		String dockString = EMPTY;
-		StringBuilder marg = new StringBuilder();
 		PickleStepTestStep pickleStep = (PickleStepTestStep) step;
-		if (!pickleStep.getStepArgument().isEmpty()) {
-			Argument argument = pickleStep.getStepArgument().get(0);
-			if (argument instanceof PickleString) {
-				dockString = ((PickleString) argument).getContent();
-			} else if (argument instanceof PickleTable) {
-				table = ((PickleTable) argument).getRows();
+		if (pickleStep.getStep().getArgument() != null) {
+			StepArgument argument = pickleStep.getStep().getArgument();
+			if (argument instanceof DocStringArgument) {
+				dockString = ((DocStringArgument) argument).getContent();
+			} else if (argument instanceof DataTableArgument) {
+				table = ((DataTableArgument) argument).cells();
 			}
 		}
+
+		StringBuilder marg = new StringBuilder();
 		if (table != null) {
 			marg.append(NEW_LINE);
-			for (PickleRow row : table) {
+			for (List<String> row : table) {
 				marg.append(TABLE_INDENT).append(TABLE_SEPARATOR);
-				for (PickleCell cell : row.getCells()) {
-					marg.append(ONE_SPACE).append(cell.getValue()).append(ONE_SPACE).append(TABLE_SEPARATOR);
+				for (String cell : row) {
+					marg.append(ONE_SPACE).append(cell).append(ONE_SPACE).append(TABLE_SEPARATOR);
 				}
 				marg.append(NEW_LINE);
 			}
@@ -237,7 +242,7 @@ public class Utils {
 	static String getStepName(TestStep step) {
 		return step instanceof HookTestStep ?
 				HOOK_ + ((HookTestStep) step).getHookType().toString() :
-				((PickleStepTestStep) step).getPickleStep().getText();
+				((PickleStepTestStep) step).getStep().getText();
 	}
 
 	@Nullable
@@ -259,13 +264,11 @@ public class Utils {
 
 	@Nullable
 	public static String getCodeRef(TestStep testStep) {
-
 		Field definitionMatchField = getDefinitionMatchField(testStep);
 
 		if (definitionMatchField != null) {
-
 			try {
-				StepDefinitionMatch stepDefinitionMatch = (StepDefinitionMatch) definitionMatchField.get(testStep);
+				Object stepDefinitionMatch = definitionMatchField.get(testStep);
 				Field stepDefinitionField = stepDefinitionMatch.getClass().getDeclaredField(STEP_DEFINITION_FIELD_NAME);
 				stepDefinitionField.setAccessible(true);
 				Object javaStepDefinition = stepDefinitionField.get(stepDefinitionMatch);
@@ -280,7 +283,6 @@ public class Utils {
 		} else {
 			return null;
 		}
-
 	}
 
 	@Nullable
@@ -293,7 +295,8 @@ public class Utils {
 				return ofNullable(testCaseIdAnnotation).flatMap(annotation -> ofNullable(getTestCaseId(testCaseIdAnnotation,
 						method,
 						((PickleStepTestStep) testStep).getDefinitionArgument()
-				))).orElseGet(() -> getTestCaseId(codeRef, ((PickleStepTestStep) testStep).getDefinitionArgument()));
+				)))
+						.orElseGet(() -> getTestCaseId(codeRef, ((PickleStepTestStep) testStep).getDefinitionArgument()));
 			} catch (NoSuchFieldException | IllegalAccessException e) {
 				return getTestCaseId(codeRef, ((PickleStepTestStep) testStep).getDefinitionArgument());
 			}
@@ -302,7 +305,7 @@ public class Utils {
 		}
 	}
 
-	static List<ParameterResource> getParameters(List<cucumber.api.Argument> arguments, String text) {
+	static List<ParameterResource> getParameters(List<Argument> arguments, String text) {
 		List<ParameterResource> parameters = Lists.newArrayList();
 		ArrayList<String> parameterNames = Lists.newArrayList();
 		Matcher matcher = Pattern.compile(PARAMETER_REGEX).matcher(text);
@@ -324,7 +327,7 @@ public class Utils {
 
 	private static Method retrieveMethod(Field definitionMatchField, TestStep testStep)
 			throws IllegalAccessException, NoSuchFieldException {
-		StepDefinitionMatch stepDefinitionMatch = (StepDefinitionMatch) definitionMatchField.get(testStep);
+		Object stepDefinitionMatch = definitionMatchField.get(testStep);
 		Field stepDefinitionField = stepDefinitionMatch.getClass().getDeclaredField(STEP_DEFINITION_FIELD_NAME);
 		stepDefinitionField.setAccessible(true);
 		Object javaStepDefinition = stepDefinitionField.get(stepDefinitionMatch);
@@ -334,32 +337,26 @@ public class Utils {
 	}
 
 	@Nullable
-	private static TestCaseIdEntry getTestCaseId(TestCaseId testCaseId, Method method, List<cucumber.api.Argument> arguments) {
+	private static TestCaseIdEntry getTestCaseId(TestCaseId testCaseId, Method method, List<Argument> arguments) {
 		if (testCaseId.parametrized()) {
-			List<String> values = new ArrayList<String>(arguments.size());
-			for (cucumber.api.Argument argument : arguments) {
-				values.add(argument.getValue());
-			}
-			return TestCaseIdUtils.getParameterizedTestCaseId(method, values.toArray());
+			return TestCaseIdUtils.getParameterizedTestCaseId(method, arguments.stream().map(Argument::getValue).toArray());
 		} else {
 			return new TestCaseIdEntry(testCaseId.value());
 		}
 	}
 
-	private static TestCaseIdEntry getTestCaseId(String codeRef, List<cucumber.api.Argument> arguments) {
+	private static TestCaseIdEntry getTestCaseId(String codeRef, List<Argument> arguments) {
 		return ofNullable(arguments).filter(args -> !args.isEmpty())
 				.map(args -> new TestCaseIdEntry(codeRef + TRANSFORM_PARAMETERS.apply(args)))
 				.orElseGet(() -> new TestCaseIdEntry(codeRef));
 	}
 
-	private static final Function<List<cucumber.api.Argument>, String> TRANSFORM_PARAMETERS = it -> it.stream()
-			.map(cucumber.api.Argument::getValue)
+	private static final Function<List<Argument>, String> TRANSFORM_PARAMETERS = it -> it.stream()
+			.map(Argument::getValue)
 			.collect(Collectors.joining(",", "[", "]"));
 
 	private static Field getDefinitionMatchField(TestStep testStep) {
-
 		Class<?> clazz = testStep.getClass();
-
 		try {
 			return clazz.getField(DEFINITION_MATCH_FIELD_NAME);
 		} catch (NoSuchFieldException e) {

@@ -16,7 +16,7 @@
 package com.epam.reportportal.cucumber;
 
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
-import io.cucumber.core.gherkin.Step;
+import io.cucumber.core.internal.gherkin.ast.Step;
 import io.cucumber.plugin.event.*;
 import io.reactivex.Maybe;
 import rp.com.google.common.base.Supplier;
@@ -69,9 +69,9 @@ public class ScenarioReporter extends AbstractReporter {
     protected void beforeStep(TestStep testStep) {
         RunningContext.ScenarioContext currentScenarioContext = getCurrentScenarioContext();
         Step step = currentScenarioContext.getStep(testStep);
-        int lineInFeatureFile = step.getLine();
+        int lineInFeatureFile = step.getLocation().getLine();
         String decoratedStepName = lineInFeatureFile + decorateMessage(Utils.buildNodeName(currentScenarioContext.getStepPrefix(),
-                step.getKeyWord(),
+                step.getKeyword(),
                 Utils.getStepName(testStep),
                 EMPTY_SUFFIX
         ));
@@ -82,7 +82,7 @@ public class ScenarioReporter extends AbstractReporter {
     @Override
     protected void afterStep(Result result) {
         if (result.getStatus() != Status.PASSED) {
-            reportResult(result, decorateMessage(STEP_ + result.getStatus().toString().toUpperCase()));
+            reportResult(result, decorateMessage(STEP_ + result.getStatus().name().toUpperCase()));
         }
     }
 
@@ -134,15 +134,12 @@ public class ScenarioReporter extends AbstractReporter {
      * Start root suite
      */
     protected void startRootItem() {
-        rootSuiteId = Suppliers.memoize(new Supplier<Maybe<String>>() {
-            @Override
-            public Maybe<String> get() {
-                StartTestItemRQ rq = new StartTestItemRQ();
-                rq.setName(DUMMY_ROOT_SUITE_NAME);
-                rq.setStartTime(Calendar.getInstance().getTime());
-                rq.setType(RP_STORY_TYPE);
-                return launch.get().startTestItem(rq);
-            }
+        rootSuiteId = Suppliers.memoize(() -> {
+            StartTestItemRQ rq = new StartTestItemRQ();
+            rq.setName(DUMMY_ROOT_SUITE_NAME);
+            rq.setStartTime(Calendar.getInstance().getTime());
+            rq.setType(RP_STORY_TYPE);
+            return launch.get().startTestItem(rq);
         });
     }
 

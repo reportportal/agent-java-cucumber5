@@ -15,11 +15,9 @@
  */
 package com.epam.reportportal.cucumber;
 
-import com.epam.reportportal.listeners.Statuses;
-import com.epam.reportportal.service.item.TestCaseIdEntry;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
-import cucumber.api.*;
-import gherkin.ast.Step;
+import io.cucumber.core.internal.gherkin.ast.Step;
+import io.cucumber.plugin.event.*;
 import io.reactivex.Maybe;
 
 import java.util.Calendar;
@@ -49,7 +47,7 @@ import java.util.List;
 public class StepReporter extends AbstractReporter {
 	private Maybe<String> currentStepId;
 	private Maybe<String> hookStepId;
-	private  Result.Type hookStatus;
+	private Status hookStatus;
 
 	public StepReporter() {
 		super();
@@ -96,19 +94,19 @@ public class StepReporter extends AbstractReporter {
 		String name = null;
 		String type = null;
 		switch (hookType) {
-			case Before:
+			case BEFORE:
 				name = "Before hooks";
 				type = "BEFORE_TEST";
 				break;
-			case After:
+			case AFTER:
 				name = "After hooks";
 				type = "AFTER_TEST";
 				break;
-			case AfterStep:
+			case AFTER_STEP:
 				name = "After step";
 				type = "AFTER_METHOD";
 				break;
-			case BeforeStep:
+			case BEFORE_STEP:
 				name = "Before step";
 				type = "BEFORE_METHOD";
 				break;
@@ -118,7 +116,7 @@ public class StepReporter extends AbstractReporter {
 		rq.setStartTime(Calendar.getInstance().getTime());
 
 		hookStepId = launch.get().startTestItem(getCurrentScenarioContext().getId(), rq);
-		hookStatus = Result.Type.PASSED;
+		hookStatus = Status.PASSED;
 	}
 
 	@Override

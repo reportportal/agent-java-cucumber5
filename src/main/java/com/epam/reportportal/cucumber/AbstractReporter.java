@@ -271,8 +271,6 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 		}
 		if (result.getError() != null) {
 			Utils.sendLog(getStackTraceAsString(result.getError()), level);
-		} else {
-			Utils.sendLog("Test has failed without exception", level);
 		}
 	}
 
