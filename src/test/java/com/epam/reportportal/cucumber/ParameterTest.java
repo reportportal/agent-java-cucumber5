@@ -6,7 +6,11 @@ import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRS;
+import io.cucumber.core.internal.gherkin.ast.Location;
+import io.cucumber.core.internal.gherkin.ast.Step;
+import io.cucumber.plugin.event.Argument;
 import io.cucumber.plugin.event.PickleStepTestStep;
+import io.cucumber.plugin.event.StepArgument;
 import io.reactivex.Maybe;
 import org.junit.Before;
 import org.junit.Test;
@@ -70,7 +74,7 @@ public class ParameterTest {
 		ArrayList<String> parameterValues = Lists.newArrayList("1", "parameter");
 		ArrayList<String> parameterNames = Lists.newArrayList("count", "item");
 
-		when(testStep.getPickleStep()).thenReturn(new PickleStep("test with parameters", Collections.emptyList(), Collections.emptyList()));
+		when(testStep.getStep()).thenReturn(new TestStep());
 		when(testStep.getDefinitionArgument()).thenReturn(parameterValues.stream().map(this::getArgument).collect(Collectors.toList()));
 		when(stepReporter.scenarioContext.getId()).thenReturn(Maybe.create(emitter -> {
 			emitter.onSuccess("scenarioId");
@@ -114,5 +118,28 @@ public class ParameterTest {
 				return 0;
 			}
 		};
+	}
+
+	private class TestStep implements io.cucumber.plugin.event.Step {
+
+		@Override
+		public StepArgument getArgument() {
+			return null;
+		}
+
+		@Override
+		public String getKeyWord() {
+			return "Given";
+		}
+
+		@Override
+		public String getText() {
+			return "test with parameters";
+		}
+
+		@Override
+		public int getLine() {
+			return 0;
+		}
 	}
 }

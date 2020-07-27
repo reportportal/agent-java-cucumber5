@@ -1,6 +1,6 @@
 package com.epam.reportportal.cucumber;
 
-import io.cucumber.core.gherkin.Step;
+import io.cucumber.core.internal.gherkin.ast.Step;
 import io.cucumber.plugin.event.TestStep;
 import io.reactivex.Maybe;
 

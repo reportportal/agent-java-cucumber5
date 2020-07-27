@@ -1,7 +1,8 @@
 package com.epam.reportportal.cucumber;
 
 import com.epam.ta.reportportal.ws.model.ParameterResource;
-import io.cucumber.core.gherkin.Argument;
+
+import io.cucumber.plugin.event.Argument;
 import org.junit.Test;
 import rp.com.google.common.collect.Lists;
 
