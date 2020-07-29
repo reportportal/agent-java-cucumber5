@@ -20,7 +20,6 @@ import org.mockito.MockitoAnnotations;
 import rp.com.google.common.collect.Lists;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
@@ -90,7 +89,7 @@ public class ParameterTest {
 		stepReporter.beforeStep(testStep);
 
 		ArgumentCaptor<StartTestItemRQ> startTestItemRQArgumentCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
-		verify(reportPortalClient, times(1)).startTestItem(anyString(), startTestItemRQArgumentCaptor.capture());
+		verify(reportPortalClient, timeout(1000).times(1)).startTestItem(anyString(), startTestItemRQArgumentCaptor.capture());
 
 		StartTestItemRQ request = startTestItemRQArgumentCaptor.getValue();
 		assertNotNull(request);
