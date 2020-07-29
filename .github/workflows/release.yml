@@ -17,7 +17,6 @@ on:
   push:
     branches:
       - master
-      - v4-hotfix
 
 env:
   VERSION_FILE: gradle.properties

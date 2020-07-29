@@ -18,11 +18,9 @@ on:
     branches:
     - '*'
     - '!master'
-    - '!v4-hotfix'
   pull_request:
     branches:
     - master
-    - v4-hotfix
 
 jobs:
   build:
