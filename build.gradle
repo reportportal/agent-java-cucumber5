@@ -11,7 +11,8 @@ targetCompatibility = JavaVersion.VERSION_1_8
 
 repositories {
     jcenter()
-    releaseMode ? maven { url "http://dl.bintray.com/epam/reportportal" } : maven { url "https://jitpack.io" }
+    maven { url "http://dl.bintray.com/epam/reportportal" }
+    maven { url "https://jitpack.io" }
 }
 
 project.ext.githubUserName = project.hasProperty('githubUserName') ? githubUserName : ""
@@ -20,8 +21,8 @@ project.ext.githubToken = project.hasProperty('githubToken') ? githubToken : ""
 publishing {
     repositories {
         maven {
-            name = "Cucumber4 GitHub Packages"
-            url = uri("https://maven.pkg.github.com/reportportal/agent-java-cucumber4")
+            name = "Cucumber5 GitHub Packages"
+            url = uri("https://maven.pkg.github.com/reportportal/agent-java-cucumber5")
             credentials {
                 username = githubUserName
                 password = githubToken
@@ -36,9 +37,12 @@ dependencies {
     implementation 'io.cucumber:cucumber-java:5.0.0'
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
 
+    testImplementation('com.github.reportportal:agent-java-test-utils:ddcf50ee20')
+
     testImplementation 'org.hamcrest:hamcrest-all:1.3'
     testImplementation 'junit:junit:4.12'
-    testImplementation 'org.mockito:mockito-all:2.0.2-beta'
+    testImplementation 'org.mockito:mockito-core:3.3.3'
+    testImplementation 'io.cucumber:cucumber-testng:5.0.0'
 }
 
 wrapper {
