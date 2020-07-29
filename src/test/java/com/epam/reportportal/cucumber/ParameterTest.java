@@ -3,7 +3,9 @@ package com.epam.reportportal.cucumber;
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
+import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
+import com.epam.ta.reportportal.ws.model.item.ItemCreatedRS;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRS;
 import io.cucumber.core.internal.gherkin.ast.Location;
@@ -23,8 +25,6 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
@@ -50,6 +50,13 @@ public class ParameterTest {
 		when(listenerParameters.getBaseUrl()).thenReturn("http://example.com");
 		when(listenerParameters.getIoPoolSize()).thenReturn(10);
 		when(listenerParameters.getBatchLogsSize()).thenReturn(5);
+		when(reportPortalClient.startTestItem(any())).thenAnswer((i) -> CommonUtils.createMaybe(new ItemCreatedRS(CommonUtils.generateUniqueId(),
+				CommonUtils.generateUniqueId()
+		)));
+		when(reportPortalClient.startTestItem(
+				anyString(),
+				any()
+		)).thenAnswer((i) -> CommonUtils.createMaybe(new ItemCreatedRS(CommonUtils.generateUniqueId(), CommonUtils.generateUniqueId())));
 		stepReporter = new TestStepReporter() {
 			@Override
 			protected ReportPortal buildReportPortal() {
