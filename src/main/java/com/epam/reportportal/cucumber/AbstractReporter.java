@@ -28,8 +28,6 @@ import io.cucumber.plugin.ConcurrentEventListener;
 import io.cucumber.plugin.event.*;
 import io.reactivex.Maybe;
 import org.apache.commons.lang3.tuple.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import rp.com.google.common.base.Supplier;
 import rp.com.google.common.base.Suppliers;
 import rp.com.google.common.io.ByteSource;
@@ -56,10 +54,9 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 
 	private static final String AGENT_PROPERTIES_FILE = "agent.properties";
 
-    protected Supplier<Launch> launch;
+	protected Supplier<Launch> launch;
 	static final String COLON_INFIX = ": ";
 	private static final String SKIPPED_ISSUE_KEY = "skippedIssue";
-	private static final Logger LOGGER = LoggerFactory.getLogger(AbstractReporter.class);
 
 	private final Map<URI, RunningContext.FeatureContext> currentFeatureContextMap = new ConcurrentHashMap<>();
 
@@ -70,11 +67,7 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	// End of feature occurs once launch is finished.
 	private final Map<URI, Date> featureEndTime = new ConcurrentHashMap<>();
 
-	private Map<Long, RunningContext.ScenarioContext> threadCurrentScenarioContextMap = new ConcurrentHashMap<>();
-
-	protected void setThreadCurrentScenarioContextMap(Map<Long, RunningContext.ScenarioContext> threadCurrentScenarioContextMap) {
-		this.threadCurrentScenarioContextMap = threadCurrentScenarioContextMap;
-	}
+	private final Map<Long, RunningContext.ScenarioContext> threadCurrentScenarioContextMap = new ConcurrentHashMap<>();
 
 	/**
 	 * Registers an event handler for a specific event.
@@ -138,12 +131,11 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	/**
 	 * Start Cucumber scenario
 	 */
-	protected void beforeScenario(RunningContext.FeatureContext currentFeatureContext, RunningContext.ScenarioContext currentScenarioContext,
-			String scenarioName) {
+	protected void beforeScenario(RunningContext.FeatureContext currentFeatureContext,
+			RunningContext.ScenarioContext currentScenarioContext, String scenarioName) {
 		String description = getDescription(currentFeatureContext.getUri());
 		String codeRef = getCodeRef(currentFeatureContext.getUri(), currentScenarioContext.getLine());
-		Maybe<String> id = Utils.startNonLeafNode(
-				launch.get(),
+		Maybe<String> id = Utils.startNonLeafNode(launch.get(),
 				currentFeatureContext.getFeatureId(),
 				scenarioName,
 				description,
@@ -280,8 +272,7 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	}
 
 	protected void embedding(String mimeType, byte[] data) {
-		ReportPortal.emitLog(
-				new ReportPortalMessage(ByteSource.wrap(data), mimeType, mimeType),
+		ReportPortal.emitLog(new ReportPortalMessage(ByteSource.wrap(data), mimeType, mimeType),
 				"UNKNOWN",
 				Calendar.getInstance().getTime()
 		);
@@ -301,42 +292,42 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	 * Private part that responsible for handling events
 	 */
 
-    protected EventHandler<TestRunStarted> getTestRunStartedHandler() {
+	protected EventHandler<TestRunStarted> getTestRunStartedHandler() {
 		return event -> beforeLaunch();
 	}
 
-    protected EventHandler<TestSourceRead> getTestSourceReadHandler() {
+	protected EventHandler<TestSourceRead> getTestSourceReadHandler() {
 		return event -> RunningContext.FeatureContext.addTestSourceReadEvent(event.getUri(), event);
 	}
 
-    protected EventHandler<TestCaseStarted> getTestCaseStartedHandler() {
+	protected EventHandler<TestCaseStarted> getTestCaseStartedHandler() {
 		return this::handleStartOfTestCase;
 	}
 
-    protected EventHandler<TestStepStarted> getTestStepStartedHandler() {
+	protected EventHandler<TestStepStarted> getTestStepStartedHandler() {
 		return this::handleTestStepStarted;
 	}
 
-    protected EventHandler<TestStepFinished> getTestStepFinishedHandler() {
+	protected EventHandler<TestStepFinished> getTestStepFinishedHandler() {
 		return this::handleTestStepFinished;
 	}
 
-    protected EventHandler<TestCaseFinished> getTestCaseFinishedHandler() {
+	protected EventHandler<TestCaseFinished> getTestCaseFinishedHandler() {
 		return this::afterScenario;
 	}
 
-    protected EventHandler<TestRunFinished> getTestRunFinishedHandler() {
+	protected EventHandler<TestRunFinished> getTestRunFinishedHandler() {
 		return event -> {
 			handleEndOfFeature();
 			afterLaunch();
 		};
 	}
 
-    protected EventHandler<EmbedEvent> getEmbedEventHandler() {
+	protected EventHandler<EmbedEvent> getEmbedEventHandler() {
 		return event -> embedding(event.getMediaType(), event.getData());
 	}
 
-    protected EventHandler<WriteEvent> getWriteEventHandler() {
+	protected EventHandler<WriteEvent> getWriteEventHandler() {
 		return event -> write(event.getText());
 	}
 
@@ -361,8 +352,7 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 		}
 
 		RunningContext.ScenarioContext scenarioContext = currentFeatureContext.getScenarioContext(testCase);
-		String scenarioName = Utils.buildNodeName(
-				scenarioContext.getKeyword(),
+		String scenarioName = Utils.buildNodeName(scenarioContext.getKeyword(),
 				AbstractReporter.COLON_INFIX,
 				scenarioContext.getName(),
 				scenarioContext.getOutlineIteration()
