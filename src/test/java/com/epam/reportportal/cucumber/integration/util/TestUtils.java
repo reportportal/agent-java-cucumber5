@@ -17,6 +17,8 @@ import org.testng.TestNG;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static com.epam.reportportal.util.test.CommonUtils.createMaybe;
 import static com.epam.reportportal.util.test.CommonUtils.generateUniqueId;
@@ -67,28 +69,38 @@ public class TestUtils {
 		mockLaunch(client, launchUuid, suiteUuid, testClassUuid, Collections.singleton(testMethodUuid));
 	}
 
-	@SuppressWarnings("unchecked")
 	public static void mockLaunch(ReportPortalClient client, String launchUuid, String suiteUuid, String testClassUuid,
 			Collection<String> testMethodUuidList) {
+		mockLaunch(client, launchUuid, suiteUuid, Collections.singletonList(Pair.of(testClassUuid, testMethodUuidList)));
+	}
+
+	@SuppressWarnings("unchecked")
+	public static void mockLaunch(ReportPortalClient client, String launchUuid, String suiteUuid,
+			Collection<Pair<String, ? extends Collection<String>>> testSteps) {
 		when(client.startLaunch(any())).thenReturn(createMaybe(new StartLaunchRS(launchUuid, 1L)));
 
 		Maybe<ItemCreatedRS> suiteMaybe = createMaybe(new ItemCreatedRS(suiteUuid, suiteUuid));
 		when(client.startTestItem(any())).thenReturn(suiteMaybe);
 
-		Maybe<ItemCreatedRS> testClassMaybe = createMaybe(new ItemCreatedRS(testClassUuid, testClassUuid));
-		when(client.startTestItem(eq(suiteUuid), any())).thenReturn(testClassMaybe);
+		List<Maybe<ItemCreatedRS>> testResponses = testSteps.stream().map(Pair::getKey)
+				.map(uuid -> createMaybe(new ItemCreatedRS(uuid, uuid))).collect(Collectors.toList());
 
-		List<Maybe<ItemCreatedRS>> responses = testMethodUuidList.stream()
-				.map(uuid -> createMaybe(new ItemCreatedRS(uuid, uuid)))
-				.collect(Collectors.toList());
-		Maybe<ItemCreatedRS> first = responses.get(0);
-		Maybe<ItemCreatedRS>[] other = responses.subList(1, responses.size()).toArray(new Maybe[0]);
-		when(client.startTestItem(eq(testClassUuid), any())).thenReturn(first, other);
-		new HashSet<>(testMethodUuidList).forEach(testMethodUuid -> when(client.finishTestItem(eq(testMethodUuid), any())).thenReturn(
-				createMaybe(new OperationCompletionRS())));
+		Maybe<ItemCreatedRS> first = testResponses.get(0);
+		Maybe<ItemCreatedRS>[] other = testResponses.subList(1, testResponses.size()).toArray(new Maybe[0]);
+		when(client.startTestItem(same(suiteUuid), any())).thenReturn(first, other);
 
-		Maybe<OperationCompletionRS> testClassFinishMaybe = createMaybe(new OperationCompletionRS());
-		when(client.finishTestItem(eq(testClassUuid), any())).thenReturn(testClassFinishMaybe);
+		testSteps.forEach(test -> {
+			String testClassUuid = test.getKey();
+			List<Maybe<ItemCreatedRS>> stepResponses =
+					test.getValue().stream().map(uuid -> createMaybe(new ItemCreatedRS(uuid, uuid))).collect(Collectors.toList());
+
+			Maybe<ItemCreatedRS> myFirst = stepResponses.get(0);
+			Maybe<ItemCreatedRS>[] myOther = stepResponses.subList(1, stepResponses.size()).toArray(new Maybe[0]);
+			when(client.startTestItem(same(testClassUuid), any())).thenReturn(myFirst, myOther);
+			new HashSet<>(test.getValue()).forEach(testMethodUuid -> when(client.finishTestItem(same(testMethodUuid), any())).thenReturn(
+					createMaybe(new OperationCompletionRS())));
+			when(client.finishTestItem(same(testClassUuid), any())).thenReturn(createMaybe(new OperationCompletionRS()));
+		});
 
 		Maybe<OperationCompletionRS> suiteFinishMaybe = createMaybe(new OperationCompletionRS());
 		when(client.finishTestItem(eq(suiteUuid), any())).thenReturn(suiteFinishMaybe);
