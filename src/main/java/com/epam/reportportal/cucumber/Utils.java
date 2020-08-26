@@ -27,9 +27,11 @@ import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.ParameterResource;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.attribute.ItemAttributesRQ;
+import io.cucumber.core.internal.gherkin.ast.Step;
 import io.cucumber.core.internal.gherkin.ast.Tag;
 import io.cucumber.plugin.event.*;
 import io.reactivex.Maybe;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rp.com.google.common.collect.ImmutableMap;
@@ -121,6 +123,7 @@ public class Utils {
 		rq.setName(name);
 		rq.setAttributes(attributes);
 		rq.setStartTime(Calendar.getInstance().getTime());
+		rq.setType(type);
 		if ("STEP".equals(type)) {
 			rq.setTestCaseId(TestCaseIdUtils.getTestCaseId(codeRef, null).getId());
 		}
@@ -375,5 +378,47 @@ public class Utils {
 	@Nonnull
 	public static String getCodeRef(@Nonnull URI uri, int line) {
 		return uri + ":" + line;
+	}
+
+	public static Pair<String, String> getHookTypeAndName(HookType hookType) {
+		String name = null;
+		String type = null;
+		switch (hookType) {
+			case BEFORE:
+				name = "Before hooks";
+				type = "BEFORE_TEST";
+				break;
+			case AFTER:
+				name = "After hooks";
+				type = "AFTER_TEST";
+				break;
+			case AFTER_STEP:
+				name = "After step";
+				type = "AFTER_METHOD";
+				break;
+			case BEFORE_STEP:
+				name = "Before step";
+				type = "BEFORE_METHOD";
+				break;
+		}
+		return Pair.of(type, name);
+	}
+
+	public static StartTestItemRQ buildStartStepRequest(String stepPrefix, TestStep testStep, Step step, boolean hasStats) {
+		StartTestItemRQ rq = new StartTestItemRQ();
+		rq.setHasStats(hasStats);
+		rq.setName(Utils.buildNodeName(stepPrefix, step.getKeyword(), Utils.getStepName(testStep), ""));
+		rq.setDescription(Utils.buildMultilineArgument(testStep));
+		rq.setStartTime(Calendar.getInstance().getTime());
+		rq.setType("STEP");
+		String codeRef = Utils.getCodeRef(testStep);
+		List<Argument> arguments = testStep instanceof PickleStepTestStep ?
+				((PickleStepTestStep) testStep).getDefinitionArgument() :
+				Collections.emptyList();
+		rq.setParameters(Utils.getParameters(arguments, step.getText()));
+		rq.setCodeRef(codeRef);
+		rq.setTestCaseId(ofNullable(Utils.getTestCaseId(testStep, codeRef)).map(TestCaseIdEntry::getId).orElse(null));
+		rq.setAttributes(Utils.getAttributes(testStep));
+		return rq;
 	}
 }
