@@ -45,6 +45,7 @@ import java.util.Calendar;
  * @author Sergey_Gvozdyukevich
  * @author Serhii Zharskyi
  * @author Vitaliy Tsvihun
+ * @author Vadzim Hushchanskou
  */
 public class ScenarioReporter extends AbstractReporter {
 	private static final String RP_STORY_TYPE = "SUITE";
