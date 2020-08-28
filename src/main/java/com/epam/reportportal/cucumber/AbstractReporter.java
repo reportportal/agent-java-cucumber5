@@ -35,8 +35,10 @@ import rp.com.google.common.io.ByteSource;
 import java.net.URI;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import static com.epam.reportportal.cucumber.Utils.getCodeRef;
 import static com.epam.reportportal.cucumber.Utils.getDescription;
@@ -69,7 +71,7 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	// End of feature occurs once launch is finished.
 	private final Map<URI, Date> featureEndTime = new ConcurrentHashMap<>();
 
-	private final Map<Long, RunningContext.ScenarioContext> threadCurrentScenarioContextMap = new ConcurrentHashMap<>();
+	private final ThreadLocal<RunningContext.ScenarioContext> currentScenarioContext = new ThreadLocal<>();
 
 	/**
 	 * Registers an event handler for a specific event.
@@ -101,7 +103,7 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	}
 
 	protected RunningContext.ScenarioContext getCurrentScenarioContext() {
-		return threadCurrentScenarioContextMap.get(Thread.currentThread().getId());
+		return currentScenarioContext.get();
 	}
 
 	/**
@@ -153,16 +155,21 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	 * Put scenario end time in a map to check last scenario end time per feature
 	 */
 	protected void afterScenario(TestCaseFinished event) {
-		RunningContext.ScenarioContext currentScenarioContext = getCurrentScenarioContext();
-		for (Map.Entry<Pair<String, URI>, RunningContext.ScenarioContext> scenarioContext : currentScenarioContextMap.entrySet()) {
-			if (scenarioContext.getValue().getLine() == currentScenarioContext.getLine()) {
+		RunningContext.ScenarioContext context = getCurrentScenarioContext();
+		List<Pair<Pair<String, URI>, RunningContext.ScenarioContext>> mapEntries = currentScenarioContextMap.entrySet()
+				.stream()
+				.map(e -> Pair.of(e.getKey(), e.getValue()))
+				.collect(Collectors.toList());
+		for (Pair<Pair<String, URI>, RunningContext.ScenarioContext> scenarioContext : mapEntries) {
+			if (scenarioContext.getValue().getLine() == context.getLine()) {
 				currentScenarioContextMap.remove(scenarioContext.getKey());
-				Date endTime = Utils.finishTestItem(launch.get(), currentScenarioContext.getId(), event.getResult().getStatus());
+				Date endTime = Utils.finishTestItem(launch.get(), context.getId(), event.getResult().getStatus());
 				URI featureURI = scenarioContext.getKey().getValue();
 				featureEndTime.put(featureURI, endTime);
 				break;
 			}
 		}
+		currentScenarioContext.set(null);
 	}
 
 	/**
@@ -378,15 +385,15 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 		);
 
 		Pair<String, URI> scenarioNameFeatureURI = Pair.of(testCase.getScenarioDesignation(), currentFeatureContext.getUri());
-		RunningContext.ScenarioContext currentScenarioContext = currentScenarioContextMap.get(scenarioNameFeatureURI);
+		RunningContext.ScenarioContext context = currentScenarioContextMap.get(scenarioNameFeatureURI);
 
-		if (currentScenarioContext == null) {
-			currentScenarioContext = currentFeatureContext.getScenarioContext(testCase);
-			currentScenarioContextMap.put(scenarioNameFeatureURI, currentScenarioContext);
-			threadCurrentScenarioContextMap.put(Thread.currentThread().getId(), currentScenarioContext);
+		if (context == null) {
+			context = currentFeatureContext.getScenarioContext(testCase);
+			currentScenarioContextMap.put(scenarioNameFeatureURI, context);
+			currentScenarioContext.set(context);
 		}
 
-		beforeScenario(currentFeatureContext, currentScenarioContext, scenarioName);
+		beforeScenario(currentFeatureContext, context, scenarioName);
 	}
 
 	protected void handleTestStepStarted(TestStepStarted event) {
