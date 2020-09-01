@@ -46,13 +46,16 @@ class RunningContext {
 
 	static class FeatureContext {
 		private static final Map<URI, TestSourceRead> PATH_TO_READ_EVENT_MAP = new ConcurrentHashMap<>();
-		private URI currentFeatureUri;
+		private final URI currentFeatureUri;
+		private final Feature currentFeature;
+		private final Set<ItemAttributesRQ> attributes;
 		private Maybe<String> currentFeatureId;
-		private Feature currentFeature;
-		private Set<ItemAttributesRQ> attributes;
 
-		FeatureContext() {
-			attributes = new HashSet<>();
+		FeatureContext(TestCase testCase) {
+			TestSourceRead event = PATH_TO_READ_EVENT_MAP.get(testCase.getUri());
+			currentFeature = getFeature(event.getSource());
+			currentFeatureUri = event.getUri();
+			attributes = Utils.extractAttributes(currentFeature.getTags());
 		}
 
 		static void addTestSourceReadEvent(URI uri, TestSourceRead event) {
@@ -68,14 +71,6 @@ class RunningContext {
 			context.processBackground(getBackground());
 			context.processScenarioOutline(scenario);
 			return context;
-		}
-
-		FeatureContext processTestSourceReadEvent(TestCase testCase) {
-			TestSourceRead event = PATH_TO_READ_EVENT_MAP.get(testCase.getUri());
-			currentFeature = getFeature(event.getSource());
-			currentFeatureUri = event.getUri();
-			attributes = Utils.extractAttributes(currentFeature.getTags());
-			return this;
 		}
 
 		Feature getFeature(String source) {
