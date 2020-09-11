@@ -15,15 +15,16 @@
  */
 package com.epam.reportportal.cucumber;
 
-import com.epam.reportportal.service.Launch;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
-import io.cucumber.plugin.event.*;
+import io.cucumber.plugin.event.HookType;
+import io.cucumber.plugin.event.TestStep;
 import io.reactivex.Maybe;
-import org.apache.commons.lang3.tuple.Pair;
 import rp.com.google.common.base.Supplier;
 import rp.com.google.common.base.Suppliers;
 
+import javax.annotation.Nonnull;
 import java.util.Calendar;
+import java.util.Optional;
 
 /**
  * Cucumber reporter for ReportPortal that reports scenarios as test methods.
@@ -62,64 +63,35 @@ public class ScenarioReporter extends AbstractReporter {
 	}
 
 	@Override
-	protected void beforeStep(TestStep testStep) {
-		RunningContext.ScenarioContext context = getCurrentScenarioContext();
-		StartTestItemRQ rq = Utils.buildStartStepRequest(context.getStepPrefix(), testStep, context.getStep(testStep), false);
-		context.setCurrentStepId(launch.get().startTestItem(context.getId(), rq));
-	}
-
-	@Override
-	protected void afterStep(Result result) {
-		reportResult(result, null);
-		RunningContext.ScenarioContext context = getCurrentScenarioContext();
-		Launch myLaunch = launch.get();
-		myLaunch.getStepReporter().finishPreviousStep();
-		Utils.finishTestItem(myLaunch, context.getCurrentStepId(), result.getStatus());
-		context.setCurrentStepId(null);
-	}
-
-	@Override
-	protected void beforeHooks(HookType hookType) {
-		StartTestItemRQ rq = new StartTestItemRQ();
+	protected StartTestItemRQ buildStartStepRequest(TestStep testStep, String stepPrefix, String keyword) {
+		StartTestItemRQ rq = super.buildStartStepRequest(testStep, stepPrefix, keyword);
 		rq.setHasStats(false);
-		Pair<String, String> typeName = Utils.getHookTypeAndName(hookType);
-		rq.setType(typeName.getKey());
-		rq.setName(typeName.getValue());
-		rq.setStartTime(Calendar.getInstance().getTime());
-
-		RunningContext.ScenarioContext context = getCurrentScenarioContext();
-		context.setHookStepId(launch.get().startTestItem(getCurrentScenarioContext().getId(), rq));
-		context.setHookStatus(Status.PASSED);
+		return rq;
 	}
 
 	@Override
-	protected void afterHooks(Boolean isBefore) {
-		RunningContext.ScenarioContext context = getCurrentScenarioContext();
-		Launch myLaunch = launch.get();
-		myLaunch.getStepReporter().finishPreviousStep();
-		Utils.finishTestItem(myLaunch, context.getHookStepId(), context.getHookStatus());
-		context.setHookStepId(null);
+	protected StartTestItemRQ buildStartHookRequest(HookType hookType) {
+		StartTestItemRQ rq = super.buildStartHookRequest(hookType);
+		rq.setHasStats(false);
+		return rq;
 	}
 
 	@Override
-	protected void hookFinished(HookTestStep step, Result result, Boolean isBefore) {
-		reportResult(result, (isBefore ? "Before" : "After") + " hook: " + step.getCodeLocation());
-		getCurrentScenarioContext().setHookStatus(result.getStatus());
-	}
-
-	@Override
+	@Nonnull
 	protected String getFeatureTestItemType() {
 		return RP_TEST_TYPE;
 	}
 
 	@Override
+	@Nonnull
 	protected String getScenarioTestItemType() {
 		return RP_STEP_TYPE;
 	}
 
 	@Override
-	protected Maybe<String> getRootItemId() {
-		return rootSuiteId.get();
+	@Nonnull
+	protected Optional<Maybe<String>> getRootItemId() {
+		return Optional.of(rootSuiteId.get());
 	}
 
 	@Override
