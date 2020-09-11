@@ -37,8 +37,9 @@ import java.util.stream.IntStream;
  *
  * @author Serhii Zharskyi
  * @author Vitaliy Tsvihun
+ * @author Vadzim Hushchanskou
  */
-class RunningContext {
+public class RunningContext {
 
 	private RunningContext() {
 		throw new AssertionError("No instances should exist for the class!");
@@ -140,26 +141,20 @@ class RunningContext {
 	public static class ScenarioContext {
 		private static final Map<ScenarioDefinition, List<Integer>> scenarioOutlineMap = new ConcurrentHashMap<>();
 
+		private final Queue<Step> backgroundSteps = new ArrayDeque<>();
+		private final Map<Integer, Step> scenarioLocationMap = new HashMap<>();
+		private Set<ItemAttributesRQ> attributes = new HashSet<>();
 		private Maybe<String> currentStepId;
 		private Maybe<String> hookStepId;
 		private Status hookStatus;
 		private Maybe<String> id;
 		private Background background;
 		private ScenarioDefinition scenario;
-		private final Queue<Step> backgroundSteps;
-		private final Map<Integer, Step> scenarioLocationMap;
-		private Set<ItemAttributesRQ> attributes;
 		private TestCase testCase;
 		private boolean hasBackground = false;
 		private String outlineIteration;
 		private URI uri;
 		private String text;
-
-		public ScenarioContext() {
-			backgroundSteps = new ArrayDeque<>();
-			scenarioLocationMap = new HashMap<>();
-			attributes = new HashSet<>();
-		}
 
 		public void processScenario(ScenarioDefinition scenario) {
 			this.scenario = scenario;
@@ -235,7 +230,7 @@ class RunningContext {
 			if (step != null) {
 				return step;
 			}
-			throw new IllegalStateException(String.format("Trying to get step for unknown line in feature. " + "Scenario: %s, line: %s",
+			throw new IllegalStateException(String.format("Trying to get step for unknown line in feature. Scenario: %s, line: %s",
 					scenario.getName(),
 					getLine()
 			));
