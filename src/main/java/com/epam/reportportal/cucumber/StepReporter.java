@@ -15,14 +15,9 @@
  */
 package com.epam.reportportal.cucumber;
 
-import com.epam.reportportal.service.Launch;
-import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
-import io.cucumber.plugin.event.*;
 import io.reactivex.Maybe;
-import org.apache.commons.lang3.tuple.Pair;
 
 import javax.annotation.Nonnull;
-import java.util.Calendar;
 import java.util.Optional;
 
 /**
