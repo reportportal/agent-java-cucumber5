@@ -598,8 +598,7 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	}
 
 	private void addToTree(RunningContext.FeatureContext context) {
-		ITEM_TREE.getTestItems()
-				.put(createKey(context.getUri()), TestItemTree.createTestItemLeaf(context.getFeatureId()));
+		ITEM_TREE.getTestItems().put(createKey(context.getUri()), TestItemTree.createTestItemLeaf(context.getFeatureId()));
 	}
 
 	protected void handleStartOfTestCase(TestCaseStarted event) {
