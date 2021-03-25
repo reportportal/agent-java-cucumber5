@@ -16,7 +16,7 @@
 
 package com.epam.reportportal.cucumber;
 
-import com.epam.reportportal.listeners.ListenerParameters;
+import com.epam.reportportal.cucumber.integration.util.TestUtils;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.ta.reportportal.ws.model.attribute.ItemAttributesRQ;
@@ -54,9 +54,6 @@ public class LaunchSystemAttributesTest {
 	@Mock
 	private ReportPortalClient reportPortalClient;
 
-	@Mock
-	private ListenerParameters listenerParameters;
-
 	@BeforeAll
 	public static void initKeys() {
 		properties.put("os", Pattern.compile("^.+\\|.+\\|.+$"));
@@ -67,13 +64,10 @@ public class LaunchSystemAttributesTest {
 	@BeforeEach
 	public void initLaunch() {
 		MockitoAnnotations.initMocks(this);
-		when(listenerParameters.getEnable()).thenReturn(true);
-		when(listenerParameters.getIoPoolSize()).thenReturn(10);
-		when(listenerParameters.getBatchLogsSize()).thenReturn(5);
 		stepReporter = new StepReporter() {
 			@Override
 			protected ReportPortal buildReportPortal() {
-				return ReportPortal.create(reportPortalClient, listenerParameters);
+				return ReportPortal.create(reportPortalClient, TestUtils.standardParameters());
 			}
 		};
 	}
