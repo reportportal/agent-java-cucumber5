@@ -15,12 +15,11 @@
  */
 package com.epam.reportportal.cucumber;
 
+import com.epam.reportportal.utils.MemoizingSupplier;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import io.cucumber.plugin.event.HookType;
 import io.cucumber.plugin.event.TestStep;
 import io.reactivex.Maybe;
-import rp.com.google.common.base.Supplier;
-import rp.com.google.common.base.Suppliers;
 
 import javax.annotation.Nonnull;
 import java.util.Calendar;
@@ -54,7 +53,7 @@ public class ScenarioReporter extends AbstractReporter {
 	private static final String RP_STEP_TYPE = "STEP";
 	private static final String DUMMY_ROOT_SUITE_NAME = "Root User Story";
 
-	protected Supplier<Maybe<String>> rootSuiteId;
+	protected MemoizingSupplier<Maybe<String>> rootSuiteId;
 
 	@Override
 	protected void beforeLaunch() {
@@ -104,15 +103,17 @@ public class ScenarioReporter extends AbstractReporter {
 	 * Finish root suite
 	 */
 	protected void finishRootItem() {
-		finishTestItem(rootSuiteId.get());
-		rootSuiteId = null;
+		if (rootSuiteId.isInitialized()) {
+			finishTestItem(rootSuiteId.get());
+			rootSuiteId = null;
+		}
 	}
 
 	/**
 	 * Start root suite
 	 */
 	protected void startRootItem() {
-		rootSuiteId = Suppliers.memoize(() -> {
+		rootSuiteId = new MemoizingSupplier<>(() -> {
 			StartTestItemRQ rq = new StartTestItemRQ();
 			rq.setName(DUMMY_ROOT_SUITE_NAME);
 			rq.setStartTime(Calendar.getInstance().getTime());
