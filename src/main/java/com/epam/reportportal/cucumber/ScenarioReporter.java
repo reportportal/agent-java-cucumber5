@@ -69,6 +69,15 @@ public class ScenarioReporter extends AbstractReporter {
 	}
 
 	@Override
+	protected void beforeStep(TestStep testStep) {
+		super.beforeStep(testStep);
+		String description = buildMultilineArgument(testStep).trim();
+		if (!description.isEmpty()) {
+			sendLog(description);
+		}
+	}
+
+	@Override
 	protected StartTestItemRQ buildStartHookRequest(HookType hookType) {
 		StartTestItemRQ rq = super.buildStartHookRequest(hookType);
 		rq.setHasStats(false);
