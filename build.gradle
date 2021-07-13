@@ -72,6 +72,10 @@ test {
         jvmArgs += "-javaagent:$weaver"
     }
     environment "AGENT_NO_ANALYTICS", "1"
+    testLogging {
+        events "failed"
+        exceptionFormat "full"
+    }
 }
 
 wrapper {
@@ -83,3 +87,5 @@ processResources {
         expand(project.properties)
     }
 }
+
+build.dependsOn jacocoTestReport
