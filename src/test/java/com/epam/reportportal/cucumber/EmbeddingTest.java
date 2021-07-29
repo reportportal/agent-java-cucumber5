@@ -115,6 +115,13 @@ public class EmbeddingTest {
 				.collect(Collectors.toList());
 	}
 
+	private static List<String> getTypes(ArgumentCaptor<List<MultipartBody.Part>> logCaptor, List<SaveLogRQ> logs) {
+		return logs.stream()
+				.flatMap(l -> getLogFiles(l.getFile().getName(), logCaptor).stream())
+				.flatMap(f -> ofNullable(f.body().contentType()).map(MediaType::toString).map(Stream::of).orElse(Stream.empty()))
+				.collect(Collectors.toList());
+	}
+
 	@BeforeEach
 	public void setup() {
 		TestUtils.mockLaunch(client, launchId, suiteId, tests);
@@ -130,11 +137,9 @@ public class EmbeddingTest {
 		ArgumentCaptor<List<MultipartBody.Part>> logCaptor = ArgumentCaptor.forClass(List.class);
 		verify(client, atLeastOnce()).log(logCaptor.capture());
 		List<SaveLogRQ> logs = filterLogs(logCaptor, l -> Objects.nonNull(l.getFile()));
+		logs.forEach(l -> assertThat(l.getMessage(), equalTo(EmbeddingStepdefs.IMAGE_NAME)));
 
-		List<String> types = logs.stream()
-				.flatMap(l -> getLogFiles(l.getFile().getName(), logCaptor).stream())
-				.flatMap(f -> ofNullable(f.body().contentType()).map(MediaType::toString).map(Stream::of).orElse(Stream.empty()))
-				.collect(Collectors.toList());
+		List<String> types = getTypes(logCaptor, logs);
 
 		assertThat(types, hasSize(3));
 		assertThat(types, containsInAnyOrder("image/jpeg", "image/png", "image/jpeg"));
@@ -148,10 +153,7 @@ public class EmbeddingTest {
 		verify(client, atLeastOnce()).log(logCaptor.capture());
 		List<SaveLogRQ> logs = filterLogs(logCaptor, l -> Objects.nonNull(l.getFile()));
 
-		List<String> types = logs.stream()
-				.flatMap(l -> getLogFiles(l.getFile().getName(), logCaptor).stream())
-				.flatMap(f -> ofNullable(f.body().contentType()).map(MediaType::toString).map(Stream::of).orElse(Stream.empty()))
-				.collect(Collectors.toList());
+		List<String> types = getTypes(logCaptor, logs);
 
 		assertThat(types, hasSize(3));
 		assertThat(types, containsInAnyOrder("text/plain", "image/png", "application/octet-stream"));
@@ -165,10 +167,7 @@ public class EmbeddingTest {
 		verify(client, atLeastOnce()).log(logCaptor.capture());
 		List<SaveLogRQ> logs = filterLogs(logCaptor, l -> Objects.nonNull(l.getFile()));
 
-		List<String> types = logs.stream()
-				.flatMap(l -> getLogFiles(l.getFile().getName(), logCaptor).stream())
-				.flatMap(f -> ofNullable(f.body().contentType()).map(MediaType::toString).map(Stream::of).orElse(Stream.empty()))
-				.collect(Collectors.toList());
+		List<String> types = getTypes(logCaptor, logs);
 		assertThat(types, hasSize(3));
 		assertThat(types, containsInAnyOrder("application/pdf", "image/png", "application/octet-stream"));
 	}
@@ -181,10 +180,7 @@ public class EmbeddingTest {
 		verify(client, atLeastOnce()).log(logCaptor.capture());
 		List<SaveLogRQ> logs = filterLogs(logCaptor, l -> Objects.nonNull(l.getFile()));
 
-		List<String> types = logs.stream()
-				.flatMap(l -> getLogFiles(l.getFile().getName(), logCaptor).stream())
-				.flatMap(f -> ofNullable(f.body().contentType()).map(MediaType::toString).map(Stream::of).orElse(Stream.empty()))
-				.collect(Collectors.toList());
+		List<String> types = getTypes(logCaptor, logs);
 		assertThat(types, hasSize(3));
 		assertThat(types, containsInAnyOrder("application/zip", "image/png", "application/octet-stream"));
 	}
@@ -199,10 +195,7 @@ public class EmbeddingTest {
 
 		logs.forEach(l -> assertThat(l.getMessage(), equalTo("image")));
 
-		List<String> types = logs.stream()
-				.flatMap(l -> getLogFiles(l.getFile().getName(), logCaptor).stream())
-				.flatMap(f -> ofNullable(f.body().contentType()).map(MediaType::toString).map(Stream::of).orElse(Stream.empty()))
-				.collect(Collectors.toList());
+		List<String> types = getTypes(logCaptor, logs);
 		assertThat(types, hasSize(1));
 		assertThat(types, containsInAnyOrder("image/jpeg"));
 	}
@@ -217,10 +210,7 @@ public class EmbeddingTest {
 
 		logs.forEach(l -> assertThat(l.getMessage(), equalTo("image")));
 
-		List<String> types = logs.stream()
-				.flatMap(l -> getLogFiles(l.getFile().getName(), logCaptor).stream())
-				.flatMap(f -> ofNullable(f.body().contentType()).map(MediaType::toString).map(Stream::of).orElse(Stream.empty()))
-				.collect(Collectors.toList());
+		List<String> types = getTypes(logCaptor, logs);
 		assertThat(types, hasSize(1));
 		assertThat(types, containsInAnyOrder("image/jpeg"));
 	}
