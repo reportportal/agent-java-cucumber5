@@ -892,7 +892,7 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 		List<Argument> arguments = pickleStepTestStep.getDefinitionArgument();
 		List<Pair<String, String>> params = ofNullable(arguments).map(a -> IntStream.range(0, a.size())
 				.mapToObj(i -> Pair.of("arg" + i, a.get(i).getValue()))
-				.collect(Collectors.toList())).orElse(Collections.emptyList());
+				.collect(Collectors.toList())).orElse(new ArrayList<>());
 		ofNullable(pickleStepTestStep.getStep().getArgument()).ifPresent(a -> {
 			String value;
 			if (a instanceof DocStringArgument) {
