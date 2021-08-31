@@ -61,6 +61,7 @@ import java.util.stream.IntStream;
 import static com.epam.reportportal.cucumber.Utils.*;
 import static com.epam.reportportal.cucumber.util.ItemTreeUtils.createKey;
 import static com.epam.reportportal.cucumber.util.ItemTreeUtils.retrieveLeaf;
+import static java.util.Optional.of;
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace;
@@ -206,8 +207,7 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	 * @param scenarioContext current scenario context
 	 */
 	protected void beforeScenario(RunningContext.FeatureContext featureContext, RunningContext.ScenarioContext scenarioContext) {
-		String scenarioName = Utils.buildName(
-				scenarioContext.getKeyword(),
+		String scenarioName = Utils.buildName(scenarioContext.getKeyword(),
 				AbstractReporter.COLON_INFIX,
 				scenarioContext.getTestCase().getName()
 		);
@@ -842,25 +842,26 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	 */
 	@Nullable
 	protected String getCodeRef(@Nonnull TestStep testStep) {
-		Field definitionMatchField = getDefinitionMatchField(testStep);
-
-		if (definitionMatchField != null) {
+		return ofNullable(getDefinitionMatchField(testStep)).flatMap(match -> {
 			try {
-				Object stepDefinitionMatch = definitionMatchField.get(testStep);
+				Object stepDefinitionMatch = match.get(testStep);
 				Field stepDefinitionField = stepDefinitionMatch.getClass().getDeclaredField(STEP_DEFINITION_FIELD_NAME);
 				stepDefinitionField.setAccessible(true);
 				Object javaStepDefinition = stepDefinitionField.get(stepDefinitionMatch);
 				Method getLocationMethod = javaStepDefinition.getClass().getMethod(GET_LOCATION_METHOD_NAME);
 				getLocationMethod.setAccessible(true);
-				String fullCodeRef = String.valueOf(getLocationMethod.invoke(javaStepDefinition));
-				return fullCodeRef != null ? fullCodeRef.substring(0, fullCodeRef.indexOf(METHOD_OPENING_BRACKET)) : null;
-			} catch (NoSuchFieldException | NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-				return null;
+				return of(String.valueOf(getLocationMethod.invoke(javaStepDefinition))).filter(r -> !r.isEmpty()).map(r -> {
+					int openingBracketIndex = r.indexOf(METHOD_OPENING_BRACKET);
+					if (openingBracketIndex > 0) {
+						return r.substring(0, r.indexOf(METHOD_OPENING_BRACKET));
+					} else {
+						return r;
+					}
+				});
+			} catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException | InvocationTargetException ignore) {
 			}
-
-		} else {
-			return null;
-		}
+			return Optional.empty();
+		}).orElseGet(testStep::getCodeLocation);
 	}
 
 	/**
