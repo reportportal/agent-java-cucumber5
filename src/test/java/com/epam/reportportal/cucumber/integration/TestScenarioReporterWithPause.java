@@ -22,6 +22,7 @@ import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import io.cucumber.core.internal.gherkin.ast.Feature;
 
+import javax.annotation.Nonnull;
 import java.net.URI;
 
 public class TestScenarioReporterWithPause extends ScenarioReporter {
@@ -33,7 +34,8 @@ public class TestScenarioReporterWithPause extends ScenarioReporter {
 	}
 
 	@Override
-	protected StartTestItemRQ buildStartFeatureRequest(Feature feature, URI uri) {
+	@Nonnull
+	protected StartTestItemRQ buildStartFeatureRequest(@Nonnull Feature feature, @Nonnull URI uri) {
 		StartTestItemRQ result = super.buildStartFeatureRequest(feature, uri);
 		try {
 			Thread.sleep(CommonUtils.MINIMAL_TEST_PAUSE);
