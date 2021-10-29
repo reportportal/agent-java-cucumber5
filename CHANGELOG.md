@@ -1,8 +1,16 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- Feature / Scenario / Step / Hook start methods which are overridable
+- JSR-305 annotations
+- `buildFinishTestItemRequest` overridable method
+### Changed
+- Client version updated on [5.1.0-RC-12](https://github.com/reportportal/client-java/releases/tag/5.1.0-RC-12)
 ### Fixed
 - Probable agent crash on cucumber-groovy
+### Removed
+- deprecated code
 
 ## [5.1.0-RC-2]
 ### Changed
