@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [5.1.3]
 ### Changed
 - Client version updated on [5.1.16](https://github.com/reportportal/client-java/releases/tag/5.1.16), by @HardNorth
 - Cucumber version updated on 5.7.0 (the last for Cucumber 5), by @HardNorth
