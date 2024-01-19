@@ -18,6 +18,7 @@ package com.epam.reportportal.cucumber;
 import com.epam.reportportal.annotations.TestCaseId;
 import com.epam.reportportal.annotations.attribute.Attributes;
 import com.epam.reportportal.listeners.ItemStatus;
+import com.epam.reportportal.listeners.ItemType;
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.message.ReportPortalMessage;
 import com.epam.reportportal.service.Launch;
@@ -25,14 +26,16 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.item.TestCaseIdEntry;
 import com.epam.reportportal.service.tree.TestItemTree;
 import com.epam.reportportal.utils.*;
+import com.epam.reportportal.utils.files.ByteSource;
+import com.epam.reportportal.utils.markdown.MarkdownUtils;
 import com.epam.reportportal.utils.properties.SystemAttributesExtractor;
+import com.epam.reportportal.utils.reflect.Accessible;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.ParameterResource;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.attribute.ItemAttributesRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
-import com.google.common.io.ByteSource;
 import io.cucumber.core.internal.gherkin.ast.Feature;
 import io.cucumber.core.internal.gherkin.ast.Step;
 import io.cucumber.core.internal.gherkin.ast.Tag;
@@ -48,8 +51,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.*;
@@ -61,7 +62,6 @@ import java.util.stream.IntStream;
 import static com.epam.reportportal.cucumber.Utils.*;
 import static com.epam.reportportal.cucumber.util.ItemTreeUtils.createKey;
 import static com.epam.reportportal.cucumber.util.ItemTreeUtils.retrieveLeaf;
-import static java.util.Optional.of;
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace;
@@ -82,6 +82,7 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	private static final String HOOK_ = "Hook: ";
 	private static final String GET_LOCATION_METHOD_NAME = "getLocation";
 	private static final String METHOD_OPENING_BRACKET = "(";
+	private static final String DEFINITION_MATCH_FIELD_NAME = "definitionMatch";
 	private static final String STEP_DEFINITION_FIELD_NAME = "stepDefinition";
 	private static final String DOCSTRING_DECORATOR = "\n\"\"\"\n";
 
@@ -714,6 +715,7 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 			LOGGER.error("BUG: Trying to finish unspecified test item.");
 			return;
 		}
+		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(itemId, buildFinishTestItemRequest(itemId, dateTime, null));
 	}
 
@@ -732,6 +734,7 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 		}
 		FinishTestItemRQ rq = buildFinishTestItemRequest(itemId, null, mapItemStatus(status));
 		new FinishTestItemRQ();
+		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(itemId, rq);
 		return rq.getEndTime();
 	}
@@ -789,7 +792,7 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	 */
 	@Nonnull
 	protected String formatDataTable(@Nonnull final List<List<String>> table) {
-		return Utils.formatDataTable(table);
+		return MarkdownUtils.formatDataTable(table);
 	}
 
 	/**
@@ -851,10 +854,10 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	 */
 	@Nullable
 	protected Set<ItemAttributesRQ> getAttributes(@Nonnull TestStep testStep) {
-		Field definitionMatchField = getDefinitionMatchField(testStep);
-		if (definitionMatchField != null) {
+		Object definitionMatch = getDefinitionMatch(testStep);
+		if (definitionMatch != null) {
 			try {
-				Method method = retrieveMethod(definitionMatchField, testStep);
+				Method method = retrieveMethod(definitionMatch);
 				Attributes attributesAnnotation = method.getAnnotation(Attributes.class);
 				if (attributesAnnotation != null) {
 					return AttributeParser.retrieveAttributes(attributesAnnotation);
@@ -874,26 +877,31 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	 */
 	@Nullable
 	protected String getCodeRef(@Nonnull TestStep testStep) {
-		return ofNullable(getDefinitionMatchField(testStep)).flatMap(match -> {
-			try {
-				Object stepDefinitionMatch = match.get(testStep);
-				Field stepDefinitionField = stepDefinitionMatch.getClass().getDeclaredField(STEP_DEFINITION_FIELD_NAME);
-				stepDefinitionField.setAccessible(true);
-				Object javaStepDefinition = stepDefinitionField.get(stepDefinitionMatch);
-				Method getLocationMethod = javaStepDefinition.getClass().getMethod(GET_LOCATION_METHOD_NAME);
-				getLocationMethod.setAccessible(true);
-				return of(String.valueOf(getLocationMethod.invoke(javaStepDefinition))).filter(r -> !r.isEmpty()).map(r -> {
-					int openingBracketIndex = r.indexOf(METHOD_OPENING_BRACKET);
-					if (openingBracketIndex > 0) {
-						return r.substring(0, r.indexOf(METHOD_OPENING_BRACKET));
-					} else {
-						return r;
+		String cucumberLocation = testStep.getCodeLocation();
+		try {
+			Object stepDefinitionMatch = Accessible.on(testStep).field(DEFINITION_MATCH_FIELD_NAME).getValue();
+			if (stepDefinitionMatch != null) {
+				Object javaStepDefinition = Accessible.on(stepDefinitionMatch).field(STEP_DEFINITION_FIELD_NAME).getValue();
+				if (javaStepDefinition != null) {
+					Object codeLocationObject = Accessible.on(javaStepDefinition).method(GET_LOCATION_METHOD_NAME).invoke();
+					if (codeLocationObject != null) {
+						String codeLocation = codeLocationObject.toString();
+						if (isNotBlank(codeLocation)) {
+							int openingBracketIndex = codeLocation.indexOf(METHOD_OPENING_BRACKET);
+							if (openingBracketIndex > 0) {
+								return codeLocation.substring(0, codeLocation.indexOf(METHOD_OPENING_BRACKET));
+							} else {
+								return codeLocation;
+							}
+						}
 					}
-				});
-			} catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException | InvocationTargetException ignore) {
+				}
 			}
-			return Optional.empty();
-		}).orElseGet(testStep::getCodeLocation);
+		} catch (Throwable e) {
+			LOGGER.error("Unable to get java code reference for the Test Step: " + cucumberLocation, e);
+			return cucumberLocation;
+		}
+		return cucumberLocation;
 	}
 
 	/**
@@ -950,11 +958,11 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	@Nullable
 	@SuppressWarnings("unchecked")
 	protected TestCaseIdEntry getTestCaseId(@Nonnull TestStep testStep, @Nullable String codeRef) {
-		Field definitionMatchField = getDefinitionMatchField(testStep);
+		Object definitionMatch = getDefinitionMatch(testStep);
 		List<Argument> arguments = ((PickleStepTestStep) testStep).getDefinitionArgument();
-		if (definitionMatchField != null) {
+		if (definitionMatch != null) {
 			try {
-				Method method = retrieveMethod(definitionMatchField, testStep);
+				Method method = retrieveMethod(definitionMatch);
 				return TestCaseIdUtils.getTestCaseId(method.getAnnotation(TestCaseId.class),
 						method,
 						codeRef,
@@ -1013,26 +1021,17 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	 */
 	@Nonnull
 	protected Pair<String, String> getHookTypeAndName(@Nonnull HookType hookType) {
-		String name = null;
-		String type = null;
 		switch (hookType) {
 			case BEFORE:
-				name = "Before hooks";
-				type = "BEFORE_TEST";
-				break;
+				return Pair.of(ItemType.BEFORE_TEST.name(), "Before hooks");
 			case AFTER:
-				name = "After hooks";
-				type = "AFTER_TEST";
-				break;
+				return Pair.of(ItemType.AFTER_TEST.name(), "After hooks");
 			case AFTER_STEP:
-				name = "After step";
-				type = "AFTER_METHOD";
-				break;
+				return Pair.of(ItemType.AFTER_METHOD.name(), "After step");
 			case BEFORE_STEP:
-				name = "Before step";
-				type = "BEFORE_METHOD";
-				break;
+				return Pair.of(ItemType.BEFORE_METHOD.name(), "Before step");
+			default:
+				return Pair.of(ItemType.TEST.name(), "Hook");
 		}
-		return Pair.of(type, name);
 	}
 }
