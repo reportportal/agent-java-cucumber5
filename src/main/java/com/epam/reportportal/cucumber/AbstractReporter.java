@@ -82,7 +82,6 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	private static final String HOOK_ = "Hook: ";
 	private static final String GET_LOCATION_METHOD_NAME = "getLocation";
 	private static final String METHOD_OPENING_BRACKET = "(";
-	private static final String DEFINITION_MATCH_FIELD_NAME = "definitionMatch";
 	private static final String STEP_DEFINITION_FIELD_NAME = "stepDefinition";
 	private static final String DOCSTRING_DECORATOR = "\n\"\"\"\n";
 
@@ -879,7 +878,7 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 	protected String getCodeRef(@Nonnull TestStep testStep) {
 		String cucumberLocation = testStep.getCodeLocation();
 		try {
-			Object stepDefinitionMatch = Accessible.on(testStep).field(DEFINITION_MATCH_FIELD_NAME).getValue();
+			Object stepDefinitionMatch = Utils.getDefinitionMatch(testStep);
 			if (stepDefinitionMatch != null) {
 				Object javaStepDefinition = Accessible.on(stepDefinitionMatch).field(STEP_DEFINITION_FIELD_NAME).getValue();
 				if (javaStepDefinition != null) {
