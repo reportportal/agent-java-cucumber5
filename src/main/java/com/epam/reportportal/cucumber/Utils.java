@@ -21,7 +21,6 @@ import io.cucumber.plugin.event.Argument;
 import io.cucumber.plugin.event.Status;
 import io.cucumber.plugin.event.TestStep;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -77,12 +76,12 @@ public class Utils {
 	}
 
 	public static Method retrieveMethod(Object stepDefinitionMatch) throws IllegalAccessException, NoSuchFieldException {
-		Field stepDefinitionField = stepDefinitionMatch.getClass().getDeclaredField(STEP_DEFINITION_FIELD_NAME);
-		stepDefinitionField.setAccessible(true);
-		Object javaStepDefinition = stepDefinitionField.get(stepDefinitionMatch);
-		Field methodField = javaStepDefinition.getClass().getSuperclass().getDeclaredField(METHOD_FIELD_NAME);
-		methodField.setAccessible(true);
-		return (Method) methodField.get(javaStepDefinition);
+		Object javaStepDefinition = Accessible.on(stepDefinitionMatch).field(STEP_DEFINITION_FIELD_NAME).getValue();
+		Method method = null;
+		if (javaStepDefinition != null) {
+			method = (Method) Accessible.on(javaStepDefinition).field(METHOD_FIELD_NAME).getValue();
+		}
+		return method;
 	}
 
 	public static final java.util.function.Function<List<Argument>, List<?>> ARGUMENTS_TRANSFORM = arguments -> ofNullable(arguments).map(

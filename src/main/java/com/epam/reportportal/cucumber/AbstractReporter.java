@@ -249,7 +249,7 @@ public abstract class AbstractReporter implements ConcurrentEventListener {
 		currentScenarioContextMap.remove(Pair.of(context.getLine(), featureUri));
 		Date endTime = finishTestItem(context.getId(), event.getResult().getStatus());
 		featureEndTime.put(featureUri, endTime);
-		currentScenarioContext.set(null);
+		currentScenarioContext.remove();
 		removeFromTree(currentFeatureContextMap.get(context.getFeatureUri()), context);
 	}
 
