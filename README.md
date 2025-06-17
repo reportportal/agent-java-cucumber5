@@ -1,9 +1,11 @@
 # ReportPortal agent for Cucumber v.5
-Cucumber JVM version [5.0.0;6.0.0) adapter
+> **End of support**: The agent lifecycle already ended. You are free to use it as long as you prefer, but no new updates will be published.
 
 > **DISCLAIMER**: We use Google Analytics for sending anonymous usage information such as agent's and client's names,
 > and their versions after a successful launch start. This information might help us to improve both ReportPortal
 > backend and client sides. It is used by the ReportPortal team only and is not supposed for sharing with 3rd parties.
+
+Cucumber JVM version [5.0.0;6.0.0) adapter
 
 [![Maven Central](https://img.shields.io/maven-central/v/com.epam.reportportal/agent-java-cucumber5.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/com.epam.reportportal/agent-java-cucumber5)
 [![CI Build](https://github.com/reportportal/agent-java-cucumber5/actions/workflows/ci.yml/badge.svg)](https://github.com/reportportal/agent-java-cucumber5/actions/workflows/ci.yml)
